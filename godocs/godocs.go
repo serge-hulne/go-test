@@ -24,6 +24,7 @@ func kill_process(pid int) {
     if err3 != nil {
         println("warning: godoc process still running in background !")
     }
+
 }
 
 
@@ -32,19 +33,18 @@ func main () {
     /*
     *TODO:
     *   1) replace the pause by a test to check if the server responding
-    *   2) kill server process when the browser exits: Use system calls to monitor the borowser's process  
     */
 
     var e os.Error
     f, e = os.Open("log.txt",  os.O_WRONLY | os.O_CREAT,  0666)
     w = log.New(f,">>>",0)
     w.Printf("testing log !\n")
-    defer f.Close()
 
     if e != nil {
         println("Open log file failed !")
     }
 
+    defer f.Close()
 
     /*
     //---------------
@@ -112,5 +112,6 @@ func main () {
 
     // Closing the browser.
     //defer kill_process(pid2)
+
 }
 
