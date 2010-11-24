@@ -3,28 +3,25 @@ package main
 import (
     "exec"
     "fmt"
-    "syscall"
     "os"
     "strconv"
     "time"
-    "bufio"
+    "log"
 )
 
 var f *os.File
-var w *bufio.Writer
+var w *log.Logger
 
-func close_server(pid int) {
+func kill_process(pid int) {
     argv3 := []string{"", strconv.Itoa(pid)}
     cmd3, _ := exec.LookPath("kill")
-    err3 := syscall.Exec(cmd3, argv3, nil)
-    fmt.Printf("pid=%v, err3=%v", pid, err3)
+    err3 := os.Exec(cmd3, argv3, nil)
+    w.Printf("pid=%v, err3=%v", pid, err3.String())
 
-    msg :=  "err3=" + strconv.Itoa(err3) + "\n"
-    w.WriteString(msg)
-    w.WriteString("Done\n")
-    w.Flush()
-
-    if err3 != 0 {
+    msg :=  "err3=" + err3.String() + "\n"
+    w.Println(msg)
+    w.Println("Done !\n")
+    if err3 != nil {
         println("warning: godoc process still running in background !")
     }
 }
@@ -38,27 +35,59 @@ func main () {
     *   2) kill server process when the browser exits: Use system calls to monitor the borowser's process  
     */
 
-    f, _ = os.Open("log.txt",  os.O_WRONLY | os.O_CREAT,  0666)
-    w = bufio.NewWriter(f)
-    w.WriteString("testing log !\n")
-    w.Flush()
-    cmd, err := exec.LookPath("godoc")
+    var e os.Error
+    f, e = os.Open("log.txt",  os.O_WRONLY | os.O_CREAT,  0666)
+    w = log.New(f,">>>",0)
+    w.Printf("testing log !\n")
     defer f.Close()
+
+    if e != nil {
+        println("Open log file failed !")
+    }
+
+
+    /*
+    //---------------
+    // Test for os.ForkExec
+    //---------------
+    streams := []*os.File{ os.Stdin, os.Stdout, os.Stderr}
+
+    //---------------
+    // test
+    //---------------
+    argv0 := []string{"ls", "-lAF",  "/"}
+    cmd0, _ := exec.LookPath("ls")
+    pid, err0 := os.ForkExec(cmd0, argv0, nil, "", streams)
+    fmt.Printf("pid = %d\n", pid)
+    if err0 != nil {
+        println("test with ls Failed !")
+    }
+    */
+
+    //---------------
+    // Starting server 
+    //---------------
+    cmd, err := exec.LookPath("godoc")
 
     //fmt.Printf("path=%v, err=%v\n", cmd, err)
     if err != nil {
         println("Please check that godoc is installed\n")
     }
-    argv := []string{"", "-http=:8090"}
+    argv := []string{"godoc", "-http=:8090"}
+    pid1, err1 := os.ForkExec(cmd, argv, nil, "", nil)
+    fmt.Printf("err1=%v, pid=%v\n", err1, pid1)
 
-
-    //starting server 
-    pid, err1 := os.ForkExec(cmd, argv, nil, "", nil)
-    fmt.Printf("err1=%v, pid=%v\n", err1, pid)
+    //pause in the parent process to allow the server to start
     time.Sleep(1e9)
 
-    //starting browser
+    // Waiting for the server to complete
+    os.Wait(pid1, os.WNOHANG)
 
+
+
+    //---------------
+    // Starting browser
+    //---------------
     cmd2, err1 := exec.LookPath("links")
     if err1 != nil {
         println("In order to run godocs, links needs to be installed")
@@ -66,13 +95,22 @@ func main () {
         println("- Mac: Fink install links\n")
     }
 
-    argv2 := []string{"", "http://localhost:8090"}
-    //err2 := syscall.Exec(cmd2, argv2, nil)
-     _, err2 := os.ForkExec(cmd2, argv2, nil, "", nil)
+    argv2 := []string{"links", "http://localhost:8090"}
+    //pid2, err2 := os.ForkExec(cmd2, argv2, nil, "", nil)
+    err2 := os.Exec(cmd2, argv2, nil)
     fmt.Printf("err2=%v\n", err2)
 
-    //closing the server.
-    //defer close_server(pid)
 
+    // Waiting for the browser to complete
+    //os.Wait(pid2, os.WNOHANG)
+
+    // Waiting for the server to complete
+    os.Wait(pid1, os.WNOHANG)
+
+    // Closing the server.
+    defer kill_process(pid1)
+
+    // Closing the browser.
+    //defer kill_process(pid2)
 }
 
