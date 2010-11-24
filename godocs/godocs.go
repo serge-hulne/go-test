@@ -108,10 +108,10 @@ func main () {
     os.Wait(pid1, os.WNOHANG)
 
     // Closing the server.
-    defer kill_process(pid1)
+   kill_process(pid1)
 
     // Closing the browser.
-    //defer kill_process(pid2)
+    //kill_process(pid2)
 
 }
 
