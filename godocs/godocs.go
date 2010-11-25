@@ -2,7 +2,6 @@ package main
 
 import (
     "exec"
-    "fmt"
     "os"
     "strconv"
     "time"
@@ -75,14 +74,13 @@ func main () {
     }
     argv := []string{"godoc", "-http=:8090"}
     pid1, err1 := os.ForkExec(cmd, argv, nil, "", nil)
-    fmt.Printf("err1=%v, pid=%v\n", err1, pid1)
+    w.Printf("err1=%v, pid=%v\n", err1, pid1)
 
     //pause in the parent process to allow the server to start
     time.Sleep(1e9)
 
     // Waiting for the server to complete
     os.Wait(pid1, os.WNOHANG)
-
 
 
     //---------------
@@ -95,23 +93,19 @@ func main () {
         println("- Mac: Fink install links\n")
     }
 
-    argv2 := []string{"links", "http://localhost:8090"}
+    argv2 := []string{"links", "http://localhost:8090/pkg"}
     //pid2, err2 := os.ForkExec(cmd2, argv2, nil, "", nil)
     err2 := os.Exec(cmd2, argv2, nil)
-    fmt.Printf("err2=%v\n", err2)
-
+    w.Printf("err2=%v\n", err2)
 
     // Waiting for the browser to complete
     //os.Wait(pid2, os.WNOHANG)
-
     // Waiting for the server to complete
     os.Wait(pid1, os.WNOHANG)
 
-    // Closing the server.
-   kill_process(pid1)
-
+    // deferred closing the server.
+    defer kill_process(pid1)
     // Closing the browser.
-    //kill_process(pid2)
-
+    //defer kill_process(pid2)
 }
 
